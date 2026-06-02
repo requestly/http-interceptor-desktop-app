@@ -37,6 +37,12 @@ const REQUIRED_ENV_VARS = [
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
+// Hard upper bound per signtool invocation. A normal sign is sub-second;
+// transient KMS / timestamp-server stalls can push it to ~30s. 5 min gives
+// slow paths room while bounding pathological hangs so the retry loop in
+// sign() actually gets a chance to run. Without this, a hung child blocks
+// execFile forever and retries never fire.
+const SIGNTOOL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // Resolve the codesign leaf cert at sign time from env. Two acceptable shapes:
 //   1. WIN_SIGN_CERT_PATH points to an already-on-disk .crt
@@ -114,9 +120,15 @@ function validateCert(certPath) {
 
 function runSigntool(signtoolPath, args) {
   return new Promise((resolve, reject) => {
-    execFile(signtoolPath, args, (error, stdout, stderr) => {
+    execFile(signtoolPath, args, { timeout: SIGNTOOL_TIMEOUT_MS, windowsHide: true }, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(`signtool failed (exit ${error.code}):\nstdout: ${stdout}\nstderr: ${stderr}`));
+        // When Node's `timeout` kicks in it kills the child with SIGTERM,
+        // surfacing error.killed === true rather than ETIMEDOUT. Distinguish
+        // that case so the retry loop's surfaced reason is honest.
+        const reason = error.killed
+          ? `signtool timed out after ${SIGNTOOL_TIMEOUT_MS}ms (signal: ${error.signal || 'SIGTERM'})`
+          : `signtool failed (exit ${error.code})`;
+        reject(new Error(`${reason}:\nstdout: ${stdout}\nstderr: ${stderr}`));
         return;
       }
       resolve(stdout);
