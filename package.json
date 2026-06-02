@@ -1,7 +1,7 @@
 {
   "name": "requestly",
   "productName": "Requestly",
-  "version": "26.3.3",
+  "version": "26.5.28",
   "main": "src/main/main.ts",
   "private": true,
   "description": "Intercept & Modify HTTP Requests",
@@ -118,6 +118,11 @@
       ]
     },
     "win": {
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "publisherName": "BrowserStack, Inc.",
+      "sign": "./scripts/windows-kms-sign.js",
       "target": [
         "nsis"
       ]
@@ -276,7 +281,7 @@
     "@devicefarmer/adbkit": "^3.2.6",
     "@electron/remote": "^2.1.2",
     "@requestly/requestly-core": "1.1.1",
-    "@requestly/requestly-proxy": "1.3.13",
+    "@requestly/requestly-proxy": "1.4.0",
     "@sentry/browser": "^8.34.0",
     "@sentry/electron": "^5.6.0",
     "@sinclair/typebox": "^0.34.25",
