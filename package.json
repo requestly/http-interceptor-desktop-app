@@ -153,12 +153,12 @@
       "provider": "github",
       "releaseType": "release",
       "owner": "requestly",
-      "repo": "requestly-desktop-app"
+      "repo": "http-interceptor-desktop-app"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requestly/requestly-desktop-app.git"
+    "url": "git+https://github.com/requestly/http-interceptor-desktop-app.git"
   },
   "author": {
     "name": "BrowserStack Inc.",
