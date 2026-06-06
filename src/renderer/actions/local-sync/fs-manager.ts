@@ -127,6 +127,99 @@ export class FsManager {
     this.fsIgnoreManager = new FsIgnoreManager(this.rootPath, this.config);
   }
 
+  async excludeFile(filePath: string): Promise<FileSystemResult<void>> {
+    try {
+      // Get relative path from workspace root
+      const normalizedFilePath = getNormalizedPath(filePath);
+
+      // Validate that file is within workspace
+      if (!normalizedFilePath.startsWith(this.rootPath)) {
+        return {
+          type: "error",
+          error: {
+            code: ErrorCode.WrongInput,
+            message: "File path must be within the workspace root",
+            path: filePath,
+            fileType: FileTypeEnum.UNKNOWN,
+          },
+        };
+      }
+
+      // Convert absolute path to relative path (same as FsIgnoreManager)
+      let relativePath = normalizedFilePath.replace(this.rootPath, "");
+
+      // Remove leading slash if present
+      if (relativePath.startsWith("/")) {
+        relativePath = relativePath.substring(1);
+      }
+
+      // Remove trailing slash if present (files shouldn't have trailing slashes)
+      if (relativePath.endsWith("/")) {
+        relativePath = relativePath.substring(0, relativePath.length - 1);
+      }
+
+      // Read current config
+      const currentConfig = this.config;
+      if (!currentConfig || Object.keys(currentConfig).length === 0) {
+        return {
+          type: "error",
+          error: {
+            code: ErrorCode.UNKNOWN,
+            message: "No valid config available",
+            path: this.rootPath,
+            fileType: FileTypeEnum.UNKNOWN,
+          },
+        };
+      }
+
+      // Initialize exclude array if it doesn't exist
+      const excludeList = currentConfig.exclude || [];
+
+      // Check if already excluded
+      if (excludeList.includes(relativePath)) {
+        return { type: "success" };
+      }
+
+      // Add to exclude list
+      const updatedExcludeList = [...excludeList, relativePath];
+
+      // Update config
+      const newConfig: Static<typeof Config> = {
+        ...currentConfig,
+        exclude: updatedExcludeList,
+      };
+
+      // Write to requestly.json
+      const configFile = this.createRawResource({
+        path: appendPath(this.rootPath, CONFIG_FILE),
+        type: "file",
+      });
+
+      const writeResult = await writeContentRaw(
+        configFile,
+        JSON.stringify(newConfig, null, 2)
+      );
+      if (writeResult.type === "error") {
+        return writeResult;
+      }
+
+      // Reload workspace to apply changes
+      this.reload();
+
+      return { type: "success" };
+    } catch (error: any) {
+      return {
+        type: "error",
+        error: {
+          code: ErrorCode.UNKNOWN,
+          message: `Failed to exclude file: ${error.message}`,
+          path: filePath,
+          fileType: FileTypeEnum.UNKNOWN,
+        },
+      };
+    }
+  }
+
   private parseConfig() {
     const configFile = this.createRawResource({
       path: appendPath(this.rootPath, CONFIG_FILE),
