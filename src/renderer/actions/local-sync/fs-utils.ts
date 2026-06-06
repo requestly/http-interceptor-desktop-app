@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import * as Sentry from "@sentry/browser";
 import {
   API,
   APIEntity,
@@ -321,9 +322,28 @@ export async function writeContent(
         };
       }
     }
-
+    
     const parsedContentResult = parseRaw(content, fileType.validator);
     if (parsedContentResult.type === "error") {
+      // Send analytics event for validation failure (avoid sending raw content)
+      const contentMeta =
+        typeof content === "string"
+          ? { contentLength: content.length }
+          : { keys: Object.keys(content).length };
+
+      Sentry.captureEvent({
+        message: `parseRaw() - Content validation error: ${parsedContentResult.error.message}`,
+        level: "error",
+        tags: {
+          fileType: fileType.type,
+          errorType: "validation_failed",
+        },
+        extra: {
+          path: resource.path,
+          error: parsedContentResult.error.message,
+          contentMeta,
+        },
+      });
       return createFileSystemError(
         { message: parsedContentResult.error.message },
         resource.path,
@@ -331,7 +351,6 @@ export async function writeContent(
       );
     }
 
-    console.log("writing at", resource.path);
     const serializedContent = serializeContentForWriting(content);
     if (writeWithElevatedAccess) {
       await FsService.writeFileWithElevatedAccess(
@@ -353,6 +372,20 @@ export async function writeContent(
       },
     };
   } catch (e: any) {
+    // Send analytics event for write exception (without raw content)
+    Sentry.captureEvent({
+      message: `writeContent() - File write error: ${e.message}`,
+      level: "error",
+      tags: {
+        fileType: fileType.type,
+        errorType: "write_exception",
+      },
+      extra: {
+        path: resource.path,
+        error: e.message,
+        stack: e.stack,
+      },
+    });
     return createFileSystemError(e, resource.path, fileType.type);
   }
 }
@@ -1358,55 +1391,144 @@ export function sanitizeFsResourceList(
 export async function parseFileToEnv(
   file: FileResource
 ): Promise<FileSystemResult<Environment>> {
-  const parsedFileResult = await parseFile({
-    resource: file,
-    fileType: new EnvironmentRecordFileType(),
-  });
+  try {
+    const parsedFileResult = await parseFile({
+      resource: file,
+      fileType: new EnvironmentRecordFileType(),
+    });
 
-  if (parsedFileResult.type === "error") {
-    return parsedFileResult;
+    if (parsedFileResult.type === "error") {
+      Sentry.captureEvent({
+        message: `parseFileToEnv() - Environment load failed: ${parsedFileResult.error.message}`,
+        level: "error",
+        tags: {
+          fileType: "environment",
+          errorType: "environment_load_failed",
+        },
+        extra: {
+          path: file.path,
+          error: parsedFileResult.error.message,
+          errorCode: parsedFileResult.error.code,
+        },
+      });
+
+      return parsedFileResult;
+    }
+
+    const { content } = parsedFileResult;
+    const isGlobal = file.path.endsWith(`/${GLOBAL_ENV_FILE}`);
+    const environment: Environment = {
+      type: "environment",
+      id: getIdFromPath(file.path),
+      name: content.name,
+      variables: content.variables,
+      isGlobal,
+    };
+
+    return {
+      type: "success",
+      content: environment,
+    };
+  } catch (e: any) {
+    Sentry.captureEvent({
+      message: `parseFileToEnv() - Environment load exception: ${e.message}`,
+      level: "error",
+      tags: {
+        fileType: "environment",
+        errorType: "environment_load_exception",
+      },
+      extra: {
+        path: file.path,
+        error: e.message,
+        stack: e.stack,
+      },
+    });
+    return createFileSystemError(e, file.path, FileTypeEnum.ENVIRONMENT);
   }
-
-  const { content } = parsedFileResult;
-
-  const isGlobal = file.path.endsWith(`/${GLOBAL_ENV_FILE}`);
-  const environment: Environment = {
-    type: "environment",
-    id: getIdFromPath(file.path),
-    name: content.name,
-    variables: content.variables,
-    isGlobal,
-  };
-
-  const result: FileSystemResult<Environment> = {
-    type: "success",
-    content: environment,
-  };
-
-  return result;
 }
 
 export function parseToEnvironmentEntity(
   variables: Record<string, EnvironmentVariableValue>
 ) {
-  const newVariables: Record<
-    string,
-    Static<(typeof EnvironmentRecord)["variables"]>
-  > = {};
-  // eslint-disable-next-line
-  for (const key in variables) {
-    newVariables[key] = {
-      value: variables[key].syncValue,
-      type:
-        variables[key].type === EnvironmentVariableType.Secret
-          ? EnvironmentVariableType.String
-          : variables[key].type,
-      id: variables[key].id,
-      isSecret: variables[key].type === EnvironmentVariableType.Secret,
-    };
-  }
+  try {
+    const newVariables: Record<
+      string,
+      Static<(typeof EnvironmentRecord)["variables"]>
+    > = {};
+    const missingFieldsPerVariable: Record<string, string[]> = {};
+    
+    // eslint-disable-next-line
+    for (const key in variables) {
+      const variable = variables[key];
+      const missingFields: string[] = [];
 
-  return newVariables;
+      const resolvedValue =
+        variable.localValue !== undefined
+          ? variable.localValue
+          : variable.syncValue !== undefined
+          ? variable.syncValue
+          : (variable as any).value !== undefined
+          ? (variable as any).value
+          : undefined;
+
+      if (variable.id === undefined || variable.id === null) {
+        missingFields.push("id");
+      }
+      if (resolvedValue === undefined) {
+        missingFields.push("value");
+      }
+      if (!variable.type) {
+        missingFields.push("type");
+      }
+
+      if (missingFields.length > 0) {
+        missingFieldsPerVariable[key] = missingFields;
+      }
+
+      newVariables[key] = {
+        value: resolvedValue,
+        type:
+          variable.type === EnvironmentVariableType.Secret
+            ? EnvironmentVariableType.String
+            : variable.type,
+        id: variable.id,
+        isSecret: variable.type === EnvironmentVariableType.Secret,
+      };
+    }
+
+    // If any variables have missing fields, send analytics event
+    if (Object.keys(missingFieldsPerVariable).length > 0) {
+      Sentry.captureEvent({
+        message: `parseToEnvironmentEntity() - variables with missing fields: ${Object.keys(missingFieldsPerVariable).length}`,
+        level: "warning",
+        tags: {
+          fileType: "environment",
+          errorType: "invalid_variable_structure",
+        },
+        extra: {
+          totalVariables: Object.keys(variables).length,
+          variablesWithIssues: Object.keys(missingFieldsPerVariable).length,
+          missingFields: missingFieldsPerVariable,
+        },
+      });
+    }
+
+    return newVariables;
+  } catch (e: any) {
+    Sentry.captureEvent({
+        message: `parseToEnvironmentEntity() - Environment variable transform exception: ${e.message}`,
+        level: "error",
+        tags: {
+          fileType: "environment",
+          errorType: "variable_transform_exception",
+        },
+        extra: {
+          error: e.message,
+          stack: e.stack,
+        },
+    });
+    throw e;
+  }
 }
 
 export function getFileNameFromPath(filePath: string) {
