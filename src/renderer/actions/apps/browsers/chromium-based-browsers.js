@@ -43,7 +43,13 @@ const getChromiumLaunchOptions = async (
     .invoke("get-storage-object", "blocked_domains")
     .then((blockedDomains) => {
       console.log("Blocked domains", blockedDomains);
-      return blockedDomains;
+      return blockedDomains || [];
+    })
+    .then((blockListHostDomains) => {
+      return [
+        ...blockListHostDomains,
+        ...blockListHostDomains.map((domain) => `*.${domain}`),
+      ];
     })
     .catch((err) => {
       console.error(err);
@@ -56,7 +62,7 @@ const getChromiumLaunchOptions = async (
       // Force even localhost requests to go through the proxy
       // See https://bugs.chromium.org/p/chromium/issues/detail?id=899126#c17
       "<-loopback>",
-      ...(blockList || []),
+      ...blockList,
       // Don't intercept our warning hiding requests. Note that this must be
       // the 2nd rule here, or <-loopback> would override it.
       // hideWarningServer.host,
