@@ -64,9 +64,15 @@ const startBackgroundProcess = async () => {
       process.env.DEBUG_PROD === "true"
     )
     {
-      backgroundWindow.webContents.once('dom-ready', () => {
+      backgroundWindow.webContents.on('dom-ready', () => {
         backgroundWindow.webContents.openDevTools();
-      })
+      });
+
+      backgroundWindow.on('show', () => {
+        if (!backgroundWindow.isDestroyed() && !backgroundWindow.webContents.isDevToolsOpened()) {
+          backgroundWindow.webContents.openDevTools();
+        }
+      });
     }
     
     backgroundWindow.on('close', (event) => {
@@ -77,11 +83,50 @@ const startBackgroundProcess = async () => {
       return false;
     });
 
+    const closeHandler = (event) => {
+      event.preventDefault();
+      event.returnValue = false;
+      if (!backgroundWindow.isDestroyed()) {
+        backgroundWindow.hide();
+      }
+      return false;
+    };
+    
+    backgroundWindow.on("close", closeHandler);
+    
+    backgroundWindow._preventCloseHandler = closeHandler;
+
+    const originalDestroy = backgroundWindow.destroy.bind(backgroundWindow);
+    backgroundWindow.destroy = () => {
+      if (global.allowBackgroundWindowDestruction && !backgroundWindow.isDestroyed()) {
+        originalDestroy();
+        return;
+      }
+      if (!backgroundWindow.isDestroyed()) {
+        backgroundWindow.hide();
+      }
+    };
+
+    backgroundWindow._originalDestroy = originalDestroy;
+    
+    const originalRemoveAllListeners = backgroundWindow.removeAllListeners.bind(backgroundWindow);
+    backgroundWindow.removeAllListeners = (eventName) => {
+    // There is no eventName as 'close' we added undefined as fallback
+    // if someone tries to removeAllListeners without eventName or with 'close' eventName, 
+      if (eventName === 'close' || eventName === undefined) {
+        originalRemoveAllListeners.call(backgroundWindow, eventName);
+        backgroundWindow.on("close", closeHandler);
+        return backgroundWindow;
+      }
+      return originalRemoveAllListeners.call(backgroundWindow, eventName);
+    };
+
     // Setup IPC forwarding
     setupIPCForwardingToBackground(backgroundWindow);
 
     // Set state
     global.isBackgroundProcessActive = true;
+    global.backgroundProcessStarted = true;
 
     backgroundWindow.webContents.on("did-finish-load", () => {
       resolve(true);
