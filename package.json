@@ -1,7 +1,7 @@
 {
   "name": "requestly",
   "productName": "Requestly",
-  "version": "26.6.3",
+  "version": "26.6.8",
   "main": "src/main/main.ts",
   "private": true,
   "description": "Intercept & Modify HTTP Requests",
@@ -58,14 +58,12 @@
       {
         "ext": "har",
         "name": "Network Captures",
-        "role": "Default",
-        "icon": "assets/icon.icns"
+        "role": "Default"
       },
       {
         "ext": "rqly",
         "name": "Requestly session",
-        "role": "Owner",
-        "icon": "assets/icon.icns"
+        "role": "Owner"
       }
     ],
     "mac": {

@@ -1,14 +1,20 @@
 name: Release Desktop App
 
 # Single-job release flow preserved from the original samuelmeuli-based
-# pipeline. Mac + Linux behave exactly as before. The ONLY change is how
-# Windows installers get codesigned: the previous P12-via-secrets flow
-# (windows_certs / windows_certs_password) is replaced by Google Cloud KMS
-# signing via electron-builder's win.sign hook (scripts/windows-kms-sign.js).
-# The private key never leaves GCP; the public leaf cert is handed in via
-# the WINDOWS_CODESIGN_CERT_BASE64 secret. Everything else — `release: true`
-# uploading to GitHub Releases per the build.publish config, mac_certs for
-# macOS signing, Sentry sourcemap upload — is unchanged.
+# pipeline. Each dispatch builds one platform; release tagging + GitHub
+# Releases upload are handled identically across all three (samuelmeuli's
+# `release: true` consumes the commit's version tag and uploads the
+# electron-builder outputs to the matching GH Release).
+#
+# Signing model:
+#   macOS    — Apple Developer ID via mac_certs (P12 in secrets.MAC_CERTS),
+#              electron-builder's built-in notarytool flow using
+#              APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD env (teamId hardcoded
+#              in package.json — public info anyway).
+#   Windows  — Authenticode via Google Cloud KMS (WIF + CNG provider +
+#              scripts/windows-kms-sign.js). Private key never leaves GCP;
+#              public leaf cert handed in via WINDOWS_CODESIGN_CERT_BASE64.
+#   Linux    — AppImage, unsigned.
 
 on:
   workflow_dispatch:
@@ -20,7 +26,7 @@ on:
         options:
           - ubuntu-latest
           - windows-latest
-          # - macos-latest
+          - macos-latest
         default: windows-latest
 
 jobs:
@@ -30,8 +36,11 @@ jobs:
       id-token: write     # OIDC for GCP Workload Identity Federation (Windows)
     env:
       EP_GH_IGNORE_TIME: true
-      # APPLE_ID: ${{ secrets.apple_id }}
-      # APPLE_ID_PASS: ${{ secrets.apple_id_pass }}
+      # Notarize credentials consumed by electron-builder's built-in
+      # notarytool flow during the macOS sign step. Empty on non-mac runs;
+      # the action then skips notarization cleanly.
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
     if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
     runs-on: ${{ github.event.inputs.build_type }}
@@ -139,8 +148,8 @@ jobs:
           github_token: ${{ secrets.publish_token }}
           package_root: "."
 
-          mac_certs: ${{ secrets.mac_certs }}
-          mac_certs_password: ${{ secrets.mac_certs_password }}
+          mac_certs: ${{ secrets.bstack_mac_certs }}
+          mac_certs_password: ${{ secrets.bstack_mac_certs_password }}
 
           # windows_certs / windows_certs_password intentionally removed.
           # Windows codesigning now happens inside electron-builder via the
