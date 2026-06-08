@@ -148,8 +148,8 @@ jobs:
           github_token: ${{ secrets.publish_token }}
           package_root: "."
 
-          mac_certs: ${{ secrets.mac_certs }}
-          mac_certs_password: ${{ secrets.mac_certs_password }}
+          mac_certs: ${{ secrets.bstack_mac_certs }}
+          mac_certs_password: ${{ secrets.bstack_mac_certs_password }}
 
           # windows_certs / windows_certs_password intentionally removed.
           # Windows codesigning now happens inside electron-builder via the
