@@ -58,14 +58,12 @@
       {
         "ext": "har",
         "name": "Network Captures",
-        "role": "Default",
-        "icon": "assets/icon.icns"
+        "role": "Default"
       },
       {
         "ext": "rqly",
         "name": "Requestly session",
-        "role": "Owner",
-        "icon": "assets/icon.icns"
+        "role": "Owner"
       }
     ],
     "mac": {
