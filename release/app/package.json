@@ -21,7 +21,7 @@
     "@httptoolkit/browser-launcher": "^2.2.0",
     "@httptoolkit/osx-find-executable": "^2.0.1",
     "brotli-wasm": "^1.1.0",
-    "ws": "^8.16.0"
+    "ws": "^8.20.1"
   },
   "optionalDependencies": {
     "@setapp/framework-wrapper": "^4.3.4"
