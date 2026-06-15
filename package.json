@@ -303,7 +303,7 @@
     "electron-store": "^8.0.1",
     "electron-updater": "^6.3.2",
     "es6-promisify": "^7.0.0",
-    "form-data": "^4.0.3",
+    "form-data": "^4.0.6",
     "fs-extra": "^10.0.0",
     "headless": "^1.2.0",
     "history": "5.x.x",
