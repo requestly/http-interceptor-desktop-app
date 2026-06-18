@@ -37,8 +37,26 @@ class StorageCacheService {
         global.rq.userPreferences = newUserPreferences
         console.log(`Updated ${storeName} cache`);
 
-        // might not be necessary when other user preference attributes are added
-        this.restartProxyServer(newUserPreferences?.defaultPort)
+        // RQ-2425: apply the "allow insecure SSL" toggle live on the running
+        // proxy — no proxy/app restart needed.
+        let appliedLive = false;
+        try {
+          const rqProxy: any = RQProxyProvider.getInstance();
+          if (rqProxy?.setAllowInsecureCerts) {
+            rqProxy.setAllowInsecureCerts(!!newUserPreferences?.allowInsecureCerts);
+            appliedLive = true;
+          }
+        } catch (e) {
+          console.log("Failed to apply allowInsecureCerts live", e);
+        }
+
+        // Restart the proxy only when the port actually changed (or as a fallback
+        // when settings couldn't be applied live, e.g. an older proxy build).
+        const newPort = newUserPreferences?.defaultPort;
+        const currentPort = global.rq.proxyServerStatus?.port;
+        if ((newPort && currentPort && newPort !== currentPort) || !appliedLive) {
+          this.restartProxyServer(newPort)
+        }
         break;
       default:
         console.log(`${storeName} cache not found`);
