@@ -35,6 +35,23 @@ export default class AccessedFilesProcessor extends BaseActionProcessor {
       );
     }
 
+    // RQ-3110: flat list of every tracked accessed file across all categories.
+    // Used to confine get-file-contents to files the user actually opened.
+    if (type === ACCESSED_FILES.GET_ALL) {
+      const categories: AccessedFileCategoryTag[] = ["web-session", "har", "unknown"];
+      const allFiles: AccessedFile[] = [];
+      categories.forEach((cat) => {
+        const records = this.store.get(cat) as Record<
+          AccessedFile["filePath"],
+          AccessedFile
+        >;
+        if (records) {
+          allFiles.push(...Object.values(records));
+        }
+      });
+      return allFiles;
+    }
+
     if (type === ACCESSED_FILES.ADD) {
       const file = payload?.data as AccessedFile;
       category = file.category;
