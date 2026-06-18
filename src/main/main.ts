@@ -210,6 +210,47 @@ const getWebAppURL = (): string => {
     : "https://app.requestly.io";
 };
 
+// RQ-3113: webAppWindow holds the privileged preload bridge, so it must only
+// ever load origins we own. Used both by the change-webapp-url IPC handler and
+// as a navigation guard. Matches the full hostname (not substrings) so
+// look-alikes like requestly.io.evil.com / xrequestly-dev.web.app are rejected.
+// Firebase preview channels deploy to the requestly-dev hosting site, e.g.
+// https://requestly-dev--<branch>-<hash>.web.app
+const FIREBASE_PREVIEW_HOST = /^requestly-dev--[a-z0-9-]+\.web\.app$/;
+
+export const isAllowedWebAppUrl = (rawUrl: string): boolean => {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  const host = parsed.hostname;
+
+  // Local dev server — only in development builds, never in a packaged app.
+  if (host === "localhost" || host === "127.0.0.1") {
+    return isDevelopment;
+  }
+
+  // Everything else must be served over HTTPS.
+  if (parsed.protocol !== "https:") {
+    return false;
+  }
+
+  // Any requestly.io origin (app, beta, staging, EAP).
+  if (host === "requestly.io" || host.endsWith(".requestly.io")) {
+    return true;
+  }
+
+  // Beta/preview Firebase channels.
+  if (FIREBASE_PREVIEW_HOST.test(host)) {
+    return true;
+  }
+
+  return false;
+};
+
 let closingAccepted = false;
 const createWindow = async () => {
   if (isDevelopment) {
@@ -351,6 +392,24 @@ const createWindow = async () => {
     shell.openExternal(details.url);
     return { action: "deny" };
   });
+
+  // RQ-3113: defense-in-depth. The IPC handler is the front door; this blocks
+  // any other way the privileged window could be navigated off our origins
+  // (in-page navigation, JS redirects, HTTP 3xx). SPA client-side routing uses
+  // the History API and does not trigger these events, so this is transparent
+  // to normal use; external links already open in the browser via the handler
+  // above and the requestly:// deep-link flow.
+  const blockDisallowedNavigation = (
+    event: Electron.Event,
+    targetUrl: string
+  ) => {
+    if (!isAllowedWebAppUrl(targetUrl)) {
+      console.warn("Blocked navigation to disallowed URL:", targetUrl);
+      event.preventDefault();
+    }
+  };
+  webAppWindow.webContents.on("will-navigate", blockDisallowedNavigation);
+  webAppWindow.webContents.on("will-redirect", blockDisallowedNavigation);
 };
 
 let onWebAppReadyHandlers: (() => void)[] = [];
@@ -504,11 +563,17 @@ export const loadWebAppUrl = async (newURL: string) => {
   if (!webAppWindow || webAppWindow.isDestroyed()) {
     throw new Error("Web app window is not available");
   }
-  
+
+  // RQ-3113: never trust the caller — re-check the origin before navigating the
+  // privileged window, and never persist a disallowed URL into customWebAppURL.
+  if (!isAllowedWebAppUrl(newURL)) {
+    throw new Error("URL not allowed");
+  }
+
   await webAppWindow.loadURL(newURL, {
     extraHeaders: "pragma: no-cache\n",
   });
-  
+
   customWebAppURL = newURL;
   
   if (!webAppWindow.isVisible()) {
