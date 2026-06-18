@@ -32,6 +32,17 @@ class UserPreferenceActionProcessor extends BaseActionProcessor {
       case USER_PREFERENCE.UPDATE_DEFAULT_PORT:
         this.store.set({"defaultPort": payload?.data})
         break;
+      case USER_PREFERENCE.GET_ALLOW_INSECURE_CERTS:
+        return !!this.store.get("allowInsecureCerts")
+      case USER_PREFERENCE.UPDATE_ALLOW_INSECURE_CERTS: {
+        // @ts-ignore
+        let value = payload?.data?.allowInsecureCerts ?? payload?.data;
+        if (typeof value === "string") { // IPC may serialize booleans to strings
+          value = !(value === "false" || value === "0" || value === "");
+        }
+        this.store.set({ allowInsecureCerts: !!value })
+        break;
+      }
       case USER_PREFERENCE.GET_COMPLETE_LOGGING_CONFIG:
         return this.store.get("localFileLogConfig")
 

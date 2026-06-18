@@ -11,7 +11,7 @@ import { staticConfig } from "../../config";
 import * as Sentry from "@sentry/browser";
 import startHelperServer, { stopHelperServer } from "../startHelperServer";
 import logger from "utils/logger";
-import { getDefaultProxyPort } from "../storage/cacheUtils";
+import { getDefaultProxyPort, getAllowInsecureCerts } from "../storage/cacheUtils";
 import { handleCARegeneration } from "../apps/os/ca/utils";
 import { startHelperSocketServer, stopHelperSocketServer } from "../helperSocketServer";
 import portfinder from "portfinder";
@@ -43,6 +43,9 @@ function startProxyFromModule(PROXY_PORT: number) {
     certPath: CERTS_PATH,
     rootCertPath: ROOT_CERT_PATH,
     onCARegenerated: handleCARegeneration,
+    // RQ-2425: user-controlled toggle for upstream TLS verification.
+    // Defaults to false (verify) unless the user enabled insecure requests.
+    allowInsecureCerts: getAllowInsecureCerts(),
   };
   RQProxyProvider.createInstance(
     proxyConfig,
