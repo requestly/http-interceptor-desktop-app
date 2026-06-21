@@ -39,7 +39,7 @@
   "build": {
     "productName": "Requestly",
     "appId": "io.requestly.beta",
-    "electronVersion": "23.0.0",
+    "electronVersion": "27.3.11",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
