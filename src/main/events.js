@@ -22,7 +22,7 @@ import { createOrUpdateAxiosInstance } from "./actions/getProxiedAxios";
 // todo: refactor main.ts to only export core entities like webappWindow
 // and then build these utilites elsewhere
 // eslint-disable-next-line import/no-cycle
-import createTrayMenu, { loadWebAppUrl } from "./main";
+import createTrayMenu, { loadWebAppUrl, isAllowedWebAppUrl } from "./main";
 import {
   fetchAndSaveSecrets,
   getSecretProviderConfig,
@@ -251,10 +251,15 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
   ipcMain.handle("change-webapp-url", async (event, payload) => {
     try {
-      const { url } = payload;
-      if (!url || typeof url !== "string") {
-        new URL(url);
+      const url = payload?.url;
+      // RQ-3113: validate type, then enforce the origin allowlist. The previous
+      // guard was inverted (it only ran new URL(url) when url was falsy), so any
+      // real string reached loadWebAppUrl unchecked.
+      if (typeof url !== "string") {
         return { success: false, error: "Invalid URL provided" };
+      }
+      if (!isAllowedWebAppUrl(url)) {
+        return { success: false, error: "URL not allowed" };
       }
       await loadWebAppUrl(url);
 
