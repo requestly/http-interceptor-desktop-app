@@ -25,9 +25,9 @@ on:
         type: choice
         options:
           - ubuntu-latest
-          - windows-latest
+          - windows-2022
           - macos-latest
-        default: windows-latest
+        default: windows-2022
 
 jobs:
   release:
@@ -64,7 +64,7 @@ jobs:
       # Replaces the legacy `Install Distutils` step. node-gyp@9.3.1 (the
       # legacy app's pinned version) still imports distutils.version, which
       # Python 3.12+ removed (PEP 632). Pinning Python to 3.11 brings
-      # distutils back as stdlib for both windows-latest and ubuntu-latest
+      # distutils back as stdlib for both windows-2022 and ubuntu-latest
       # runners.
       - name: Set up Python 3.11 for node-gyp
         uses: actions/setup-python@v5
@@ -75,18 +75,18 @@ jobs:
         run: bash ./install.sh
 
       # ─── Windows: GCP KMS signing setup (replaces windows_certs P12) ────
-      # Runs only on windows-latest. The MSI + config drop is required so
+      # Runs only on windows-2022. The MSI + config drop is required so
       # signtool can use the "Google Cloud KMS Provider" CSP from the
       # win.sign hook later in the build step.
       - name: Auth to Google Cloud (KMS)
-        if: ${{ github.event.inputs.build_type == 'windows-latest' }}
+        if: ${{ github.event.inputs.build_type == 'windows-2022' }}
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
       - name: Install + configure KMS CNG provider
-        if: ${{ github.event.inputs.build_type == 'windows-latest' }}
+        if: ${{ github.event.inputs.build_type == 'windows-2022' }}
         shell: pwsh
         env:
           GCP_PROJECT_ID: ${{ vars.WIN_SIGN_KMS_PROJECT }}
@@ -135,7 +135,7 @@ jobs:
           # ─── Windows GCP KMS signing (consumed by scripts/windows-kms-sign.js) ──
           # On non-Windows builds these resolve to empty / are unused; the
           # sign script self-skips when USE_KMS_SIGNING is not 'true'.
-          USE_KMS_SIGNING: ${{ github.event.inputs.build_type == 'windows-latest' && 'true' || '' }}
+          USE_KMS_SIGNING: ${{ github.event.inputs.build_type == 'windows-2022' && 'true' || '' }}
           WIN_SIGN_CERT_BASE64: ${{ secrets.WINDOWS_CODESIGN_CERT_BASE64 }}
           GCP_PROJECT_ID: ${{ vars.WIN_SIGN_KMS_PROJECT }}
           GCP_KMS_LOCATION: ${{ vars.WIN_SIGN_KMS_LOCATION }}
