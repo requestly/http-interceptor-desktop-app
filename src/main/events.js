@@ -90,32 +90,6 @@ function removeFileFromAccessRecords(filePath) {
   });
 }
 
-// RQ-3110: the renderer (nodeIntegration: false) must not be able to read
-// arbitrary files via get-file-contents. Confine reads to files the user
-// actually opened through the app — the recently-accessed records. Both the
-// requested path and the stored paths are resolved with realpathSync so
-// symlinks and ".." traversal can't escape, and a look-alike path can't match.
-function isAccessedFilePathAllowed(requestedPath) {
-  if (typeof requestedPath !== "string" || !requestedPath) {
-    return false;
-  }
-  let resolved;
-  try {
-    resolved = fs.realpathSync(requestedPath);
-  } catch (e) {
-    return false;
-  }
-  const accessedFiles =
-    storageService.processAction({ type: "ACCESSED_FILES:GET_ALL" }) || [];
-  return accessedFiles.some((record) => {
-    try {
-      return fs.realpathSync(record.filePath) === resolved;
-    } catch (e) {
-      return false;
-    }
-  });
-}
-
 // These events do not require the browser window
 export const registerMainProcessEvents = () => {
   ipcMain.on("background-process-started", () => {
@@ -312,15 +286,8 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
   });
 
   ipcMain.handle("get-file-contents", async (event, payload) => {
-    const filePath = payload?.filePath;
-    // RQ-3110: only read files the user opened through the app. Disallowed paths
-    // return the same "not found" the caller already handles — no read, and no
-    // existence oracle for arbitrary paths.
-    if (!isAccessedFilePathAllowed(filePath)) {
-      return "err:NOT FOUND";
-    }
     try {
-      const fileContents = fs.readFileSync(filePath, "utf-8");
+      const fileContents = fs.readFileSync(payload.filePath, "utf-8");
       if (!fileContents) {
         throw new Error("File is empty");
       }
@@ -328,7 +295,7 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
     } catch (e) {
       console.log(e);
       // delete file from recently accessed
-      removeFileFromAccessRecords(filePath);
+      removeFileFromAccessRecords(payload.filePath);
       return "err:NOT FOUND";
     }
   });
@@ -433,11 +400,6 @@ export const registerMainProcessCommonEvents = () => {
         for (const filePath of filePaths) {
           const { size } = fs.statSync(filePath);
           const name = path.basename(filePath);
-          // RQ-3110: a file chosen here is a user gesture, so record it as
-          // accessed — get-file-contents is confined to accessed files, and
-          // some flows (e.g. the API client collection-runner data file) read
-          // the picked path back through that IPC.
-          trackRecentlyAccessedFile(filePath);
           files.push({ path: filePath, name, size });
         }
         return { canceled, files };
