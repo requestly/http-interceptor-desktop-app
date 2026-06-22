@@ -433,6 +433,11 @@ export const registerMainProcessCommonEvents = () => {
         for (const filePath of filePaths) {
           const { size } = fs.statSync(filePath);
           const name = path.basename(filePath);
+          // RQ-3110: a file chosen here is a user gesture, so record it as
+          // accessed — get-file-contents is confined to accessed files, and
+          // some flows (e.g. the API client collection-runner data file) read
+          // the picked path back through that IPC.
+          trackRecentlyAccessedFile(filePath);
           files.push({ path: filePath, name, size });
         }
         return { canceled, files };
