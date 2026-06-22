@@ -39,7 +39,7 @@
   "build": {
     "productName": "Requestly",
     "appId": "io.requestly.beta",
-    "electronVersion": "23.0.0",
+    "electronVersion": "42.4.1",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -74,9 +74,7 @@
       "gatekeeperAssess": false,
       "requirements": "assets/requirement.rqset",
       "identity": "Browserstack Inc (YQ5FZQ855D)",
-      "notarize": {
-        "teamId": "YQ5FZQ855D"
-      },
+      "notarize": true,
       "target": [
         {
           "target": "dmg",
@@ -116,11 +114,13 @@
       ]
     },
     "win": {
-      "signingHashAlgorithms": [
-        "sha256"
-      ],
-      "publisherName": "BrowserStack, Inc.",
-      "sign": "./scripts/windows-kms-sign.js",
+      "signtoolOptions": {
+        "signingHashAlgorithms": [
+          "sha256"
+        ],
+        "publisherName": "BrowserStack, Inc.",
+        "sign": "./scripts/windows-kms-sign.js"
+      },
       "target": [
         "nsis"
       ]
@@ -214,7 +214,7 @@
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
-    "@electron/rebuild": "^3.6.0",
+    "@electron/rebuild": "^4.0.4",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.1",
@@ -242,8 +242,8 @@
     "css-loader": "^6.4.0",
     "css-minimizer-webpack-plugin": "^3.1.1",
     "detect-port": "^1.3.0",
-    "electron": "^27.3.8",
-    "electron-builder": "^24.13.3",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
     "electron-devtools-installer": "^3.2.0",
     "enzyme": "^3.11.0",
     "enzyme-to-json": "^3.6.2",
@@ -337,8 +337,16 @@
     "yargs": "^17.2.1"
   },
   "devEngines": {
-    "node": ">=20.x",
-    "npm": ">=9.x"
+    "runtime": {
+      "name": "node",
+      "version": ">=20",
+      "onFail": "warn"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=9",
+      "onFail": "warn"
+    }
   },
   "browserslist": [],
   "prettier": {

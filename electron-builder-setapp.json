@@ -1,7 +1,7 @@
 {
   "productName": "Requestly",
   "appId": "io.requestly.beta-setapp",
-  "electronVersion": "23.0.0",
+  "electronVersion": "42.4.1",
   "asar": true,
   "asarUnpack": "**\\*.{node,dll}",
   "files": [
@@ -38,9 +38,7 @@
     "gatekeeperAssess": false,
     "requirements": "assets/requirement.rqset",
     "identity": "Browserstack Inc (YQ5FZQ855D)",
-    "notarize": {
-      "teamId": "YQ5FZQ855D"
-    },
+    "notarize": true,
     "minimumSystemVersion": "12.0",
     "x64ArchFiles": "**/static/nss/darwin/**",
     "icon": "assets/AppIcon.png",

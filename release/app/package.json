@@ -27,7 +27,7 @@
     "@setapp/framework-wrapper": "^4.3.4"
   },
   "devDependencies": {
-    "electron": "^27.3.8",
+    "electron": "^42.4.1",
     "npm-force-resolutions": "0.0.10"
   },
   "resolutions": {
