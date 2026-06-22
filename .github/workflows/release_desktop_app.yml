@@ -42,7 +42,9 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
-    if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
+    # TEMP: branch gate disabled to test the workflow from this PR branch.
+    # RESTORE before merge:
+    # if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
     runs-on: ${{ github.event.inputs.build_type }}
 
     steps:
