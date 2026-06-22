@@ -35,12 +35,20 @@ class UserPreferenceActionProcessor extends BaseActionProcessor {
       case USER_PREFERENCE.GET_ALLOW_INSECURE_CERTS:
         return !!this.store.get("allowInsecureCerts")
       case USER_PREFERENCE.UPDATE_ALLOW_INSECURE_CERTS: {
+        // RQ-2425: fail CLOSED. Only enable insecure TLS for an explicit boolean
+        // `true`, or a recognized truthy boolean-string (IPC may serialize
+        // booleans). A missing key, object, or unknown value stays `false`
+        // (secure). The previous `?? payload?.data` fallback made `{}` truthy and
+        // could silently enable insecure TLS.
         // @ts-ignore
-        let value = payload?.data?.allowInsecureCerts ?? payload?.data;
-        if (typeof value === "string") { // IPC may serialize booleans to strings
-          value = !(value === "false" || value === "0" || value === "");
+        const raw = payload?.data?.allowInsecureCerts;
+        let value = false;
+        if (typeof raw === "boolean") {
+          value = raw;
+        } else if (typeof raw === "string") {
+          value = raw === "true" || raw === "1";
         }
-        this.store.set({ allowInsecureCerts: !!value })
+        this.store.set({ allowInsecureCerts: value })
         break;
       }
       case USER_PREFERENCE.GET_COMPLETE_LOGGING_CONFIG:
