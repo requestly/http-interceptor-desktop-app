@@ -254,6 +254,41 @@ const createWindow = async () => {
   new AutoUpdate(webAppWindow);
   remote.enable(webAppWindow.webContents);
 
+  // -- Fix: Electron Windows bug #20400 --
+  // Built-in window.confirm on Windows causes input fields to lose their
+  // caret / freeze.  We replace it with dialog.showMessageBoxSync via IPC.
+  // The preload exposes __rqConfirmSync (ipcRenderer.sendSync wrapper) into
+  // the renderer world. Here we:
+  //   a) Handle the synchronous IPC call with the native dialog.
+  //   b) Inject JS after dom-ready that wires window.confirm → __rqConfirmSync.
+  if (process.platform === "win32") {
+    ipcMain.on("rq:show-confirm-dialog", (event, message) => {
+      const buttonIdx = dialog.showMessageBoxSync(
+        webAppWindow as BrowserWindow,
+        {
+          type: "question",
+          buttons: ["OK", "Cancel"],
+          defaultId: 0,
+          cancelId: 1,
+          detail: String(message ?? ""),
+          message: "",
+        }
+      );
+      // sendSync expects event.returnValue to be set
+      event.returnValue = buttonIdx === 0;
+    });
+
+    webAppWindow.webContents.on("dom-ready", () => {
+      webAppWindow?.webContents.executeJavaScript(`
+        if (typeof window.__rqConfirmSync === 'function') {
+          window.confirm = function(message) {
+            return window.__rqConfirmSync(message);
+          };
+        }
+      `);
+    });
+  }
+
   // TODO @sahil: Prod and Local Urls should be supplied by @requestly/requestly-core-npm package.
   const DESKTOP_APP_URL = getWebAppURL();
   webAppWindow.loadURL(DESKTOP_APP_URL, {
@@ -504,17 +539,17 @@ export const loadWebAppUrl = async (newURL: string) => {
   if (!webAppWindow || webAppWindow.isDestroyed()) {
     throw new Error("Web app window is not available");
   }
-  
+
   await webAppWindow.loadURL(newURL, {
     extraHeaders: "pragma: no-cache\n",
   });
-  
+
   customWebAppURL = newURL;
-  
+
   if (!webAppWindow.isVisible()) {
     webAppWindow.show();
   }
-  
+
   webAppWindow.focus();
 };
 
