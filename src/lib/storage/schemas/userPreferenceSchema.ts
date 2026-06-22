@@ -6,6 +6,13 @@ export const userPreferenceSchema = {
     default: DEFAULT_PROXY_PORT
   },
 
+  // RQ-2425: when true, the proxy skips upstream TLS certificate verification
+  // (lets users reach self-signed / internal upstreams). Secure (false) by default.
+  allowInsecureCerts: {
+    type: "boolean",
+    default: false
+  },
+
   localFileLogConfig: {
     type: "object",
     properties: {

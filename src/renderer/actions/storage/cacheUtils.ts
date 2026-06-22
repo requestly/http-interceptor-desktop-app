@@ -11,6 +11,11 @@ export const getDefaultProxyPort = () => {
   return userPreferences.getConfig().defaultPort;
 }
 
+export const getAllowInsecureCerts = (): boolean => {
+  const userPreferences = new UserPreferenceFetcher();
+  return !!userPreferences.getConfig()?.allowInsecureCerts;
+}
+
 export const getLocalFileLogConfig = () => {
   const userPreferences = new UserPreferenceFetcher();
   const { localFileLogConfig }= userPreferences.getConfig()
