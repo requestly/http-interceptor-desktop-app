@@ -339,13 +339,13 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": ">=20",
-      "onFail": "warn"
+      "version": ">=22.12.0",
+      "onFail": "error"
     },
     "packageManager": {
       "name": "npm",
-      "version": ">=9",
-      "onFail": "warn"
+      "version": ">=10",
+      "onFail": "error"
     }
   },
   "browserslist": [],
