@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { enable as enableWebContents } from "@electron/remote/main";
+import { captureException } from "@sentry/browser";
 /** Babel */
 require("core-js/stable");
 require("regenerator-runtime/runtime");
@@ -27,28 +28,34 @@ const startBackgroundProcess = async () => {
   return new Promise(async (resolve) => {
     let backgroundWindow = await getState("backgroundWindow");
     if (!backgroundWindow) {
-      backgroundWindow = await setState(null, {
-        stateName: "backgroundWindow",
-        // Background Process Window
-        newValue: new BrowserWindow({
-          width: 800,
-          height: 600,
-          show:
-            process.env.NODE_ENV === "development" ||
-            process.env.DEBUG_PROD === "true",
-          webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            enableRemoteModule: true,
-          },
-        }),
-      });
-      enableWebContents(backgroundWindow.webContents);
+      try {
+        backgroundWindow = await setState(null, {
+          stateName: "backgroundWindow",
+          // Background Process Window
+          newValue: new BrowserWindow({
+            width: 800,
+            height: 600,
+            show:
+              process.env.NODE_ENV === "development" ||
+              process.env.DEBUG_PROD === "true",
+            webPreferences: {
+              nodeIntegration: true,
+              contextIsolation: false,
+              enableRemoteModule: true,
+            },
+          }),
+        });
+        enableWebContents(backgroundWindow.webContents);
+      } catch (error) {
+        console.error(error);
+        captureException(error);
+        resolve(false);
+        return;
+      }
     } else {
       logger.log(
         "startBackgroundProcess: A background windows already exists. Cancelling."
       );
-
       resolve(true);
       return;
     }
@@ -83,6 +90,11 @@ const startBackgroundProcess = async () => {
     // Set state
     global.isBackgroundProcessActive = true;
 
+    backgroundWindow.on("closed", () => {
+      console.error("Background window closed unexpectedly");
+      captureException(new Error("Background window closed unexpectedly"));
+    })
+       
     backgroundWindow.webContents.on("did-finish-load", () => {
       resolve(true);
     });
