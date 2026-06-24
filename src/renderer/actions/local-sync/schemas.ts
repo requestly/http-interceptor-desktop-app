@@ -53,10 +53,10 @@ export enum KeyValueDataType {
 }
 
 const KeyValuePair = Type.Object({
-  id: Type.Number(),
+  id: Type.Optional(Type.Number()),
   key: Type.String(),
   value: Type.String(),
-  isEnabled: Type.Boolean(),
+  isEnabled: Type.Optional(Type.Boolean()),
   type: Type.Optional(Type.String()),
   description: Type.Optional(Type.String()),
   dataType: Type.Optional(Type.Enum(KeyValueDataType)),
