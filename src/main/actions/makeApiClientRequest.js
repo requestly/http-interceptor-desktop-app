@@ -108,6 +108,8 @@ const makeApiClientRequest = async ({ apiRequest }) => {
       validateStatus: () => {
         return true;
       },
+      // Pass the SSL flag down for the interceptor to handle
+      sslVerificationDisabled: apiRequest.sslVerificationDisabled === true,
     });
     const responseTime = performance.now() - requestStartTime;
 

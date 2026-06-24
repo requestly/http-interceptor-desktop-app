@@ -91,12 +91,10 @@ function createAxiosInstance(
       }),
     });
   } else {
-    instance = axios.create({
-      proxy: false,
-    });
+    instance = axios.create({ proxy: false });
 
-    instance.interceptors.request.use(async (requestConfig) => {
-      const { url: requestUrl } = requestConfig;
+    instance.interceptors.request.use(async (requestConfig: any) => {
+      const { url: requestUrl, sslVerificationDisabled } = requestConfig;
 
       if (!requestUrl) {
         return requestConfig;
@@ -104,18 +102,22 @@ function createAxiosInstance(
 
       const url = new URL(requestUrl);
       const { hostname, port: urlPort, protocol } = url;
+      const port = urlPort ? parseInt(urlPort, 10) : (protocol === "https:" ? 443 : 80);
 
-      const isLocalhost = hostname === "localhost"
+      const isLocalhost = hostname === "localhost" 
         || hostname === LOCAL_IPV4
         || hostname === `[${LOCAL_IPV6}]`
         || hostname === LOCAL_UNSPECIFIED;
 
       if (isLocalhost) {
-        const port = urlPort ? parseInt(urlPort, 10) : protocol === "https:" ? 443 : 80;
-
         const lookup = await createLocalhostLookup(port);
+        const agentOptions = {
+          lookup,
+          rejectUnauthorized: sslVerificationDisabled !== true, // false = skip SSL verification, true = enforce certificate validation
+        };
+
         requestConfig.httpAgent = new http.Agent({ lookup });
-        requestConfig.httpsAgent = new https.Agent({ lookup });
+        requestConfig.httpsAgent = new https.Agent(agentOptions);
 
         // Node.js skips DNS lookup for raw IP literals, so the custom lookup
         // above has no effect. Rewrite the URL to the concrete working IP.
@@ -127,6 +129,9 @@ function createAxiosInstance(
             requestConfig.url = requestUrl.replace(hostname, targetIp);
           }
         }
+      } else if (sslVerificationDisabled) {
+          // Handle standard web requests where SSL is bypassed
+        requestConfig.httpsAgent = new https.Agent({ rejectUnauthorized: false });
       }
 
       return requestConfig;
@@ -164,7 +169,7 @@ export const createOrUpdateAxiosInstance = (
 };
 
 /* 
-  [Intentional] add cookies by default. In line with emulating browser behaviour.
+[Intentional] add cookies by default. In line with emulating browser behaviour.
   A better name could be excludeCredentials=false .
   did this because a flag called `withCredentials` has now been released for extension
 */
