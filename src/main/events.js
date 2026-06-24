@@ -555,4 +555,9 @@ export const registerMainProcessCommonEvents = () => {
       }
     }
   );
+
+  ipcMain.handle("open-path-in-file-manager", async (event, payload) => {
+    const { path: pathToOpen } = payload;
+    shell.openPath(pathToOpen);
+  });
 };
