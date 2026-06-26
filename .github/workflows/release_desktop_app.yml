@@ -41,6 +41,7 @@ jobs:
       # the action then skips notarization cleanly.
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
 
     if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
     runs-on: ${{ github.event.inputs.build_type }}
