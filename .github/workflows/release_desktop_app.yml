@@ -41,6 +41,9 @@ jobs:
       # the action then skips notarization cleanly.
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      # electron-builder 26's notarytool flow requires the team id as an env var
+      # (no longer inferred from package.json). Public info (it's in mac.identity).
+      APPLE_TEAM_ID: YQ5FZQ855D
 
     if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
     runs-on: ${{ github.event.inputs.build_type }}
