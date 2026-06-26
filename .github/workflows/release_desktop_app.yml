@@ -59,7 +59,11 @@ jobs:
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
-          node-version: 20.9.0
+          # Electron 42 toolchain: electron-builder 26.x's app-builder-lib
+          # require()s ESM-only @noble/hashes@2.x. require(ESM) is unflagged only
+          # on Node >=20.19 / >=22.12, so the old 20.9.0 pin fails with
+          # ERR_REQUIRE_ESM. Match devEngines (>=22.12.0).
+          node-version: 22.12.0
 
       # Replaces the legacy `Install Distutils` step. node-gyp@9.3.1 (the
       # legacy app's pinned version) still imports distutils.version, which
