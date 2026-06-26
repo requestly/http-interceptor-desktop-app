@@ -42,7 +42,9 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
-    if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
+    # TEMP — RESTORE BEFORE MERGING #359. Guard disabled so the release build can
+    # be dispatched from this branch to validate the Node 22.12 bump.
+    # if: github.ref == 'refs/heads/master'|| github.ref == 'refs/heads/production'
     runs-on: ${{ github.event.inputs.build_type }}
 
     steps:
