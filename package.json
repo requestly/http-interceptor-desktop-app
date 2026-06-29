@@ -327,7 +327,7 @@
     "semver": "^7.7.2",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
-    "tmp": "^0.2.1",
+    "tmp": "^0.2.6",
     "tough-cookie": "^5.1.2",
     "ts-node": "^10.9.2",
     "ua-parser-js": "^1.0.2",
