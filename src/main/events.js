@@ -121,10 +121,8 @@ export const registerMainProcessEvents = () => {
   ipcMain.handle("clear-storage", PrimaryStorageService.clearStorage);
 
   ipcMain.handle("rq-storage:storage-action", (event, storageAction) => {
-    // RQ-3110: this channel used to forward any action verbatim, which made the
-    // RecentlyAccessedFiles store — the allowlist get-file-contents consults —
-    // renderer-writable. A foothold in webAppWindow could ACCESSED_FILES:ADD its
-    // target path and then read it back. See storage-action-gate.ts.
+    // RQ-3110: forwarding this verbatim made the get-file-contents allowlist
+    // renderer-writable. See storage-action-gate.ts.
     if (!isStorageActionAllowedFromRenderer(storageAction)) {
       console.warn(
         "Refused storage action from renderer:",
