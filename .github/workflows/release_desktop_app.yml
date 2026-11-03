@@ -60,7 +60,7 @@ jobs:
       - name: Install Node.js, NPM and Yarn
         uses: actions/setup-node@v4
         with:
-          node-version: 22.12.0
+          node-version: 24.22.1
 
       # Replaces the legacy `Install Distutils` step. node-gyp@9.3.1 (the
       # legacy app's pinned version) still imports distutils.version, which
