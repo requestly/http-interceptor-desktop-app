@@ -52,6 +52,14 @@ const getFileCategory = (fileExtension) => {
   }
 };
 
+// Electron 43+ opens file dialogs in Downloads when no defaultPath is given,
+// and the OS no longer remembers the last folder. Remember it here instead.
+let lastDialogDir;
+const withLastDialogDir = (options) => ({ defaultPath: lastDialogDir, ...options });
+const rememberDialogDir = (filePaths) => {
+  if (filePaths?.length) lastDialogDir = path.dirname(filePaths[0]);
+};
+
 const createFsResourceItem = (name, fsResourcePath, type) => ({
   name,
   path: fsResourcePath,
@@ -296,12 +304,13 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
       { name: "All Files", extensions: ["*"] },
     ];
     return dialog
-      .showOpenDialog(dialogOptions)
+      .showOpenDialog(withLastDialogDir(dialogOptions))
       .then((result) => {
         const { canceled, filePaths } = result;
         if (canceled || !filePaths?.length) {
           return null;
         }
+        rememberDialogDir(filePaths);
 
         const filePath = filePaths[0];
         trackRecentlyAccessedFile(filePath);
@@ -427,13 +436,14 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
 export const registerMainProcessCommonEvents = () => {
   ipcMain.handle("open-file-dialog", async (event, options) => {
-    const fileDialogPromise = dialog.showOpenDialog(options ?? {});
+    const fileDialogPromise = dialog.showOpenDialog(withLastDialogDir(options));
     return fileDialogPromise
       .then((result) => {
         const { canceled, filePaths } = result;
         if (canceled || !filePaths?.length) {
           return { canceled: true, files: [] };
         }
+        rememberDialogDir(filePaths);
         const files = [];
         for (const filePath of filePaths) {
           const { size } = fs.statSync(filePath);
@@ -451,11 +461,14 @@ export const registerMainProcessCommonEvents = () => {
   });
 
   ipcMain.handle("open-folder-dialog", async (event, options = {}) => {
-    const dialogOptions = {
+    const dialogOptions = withLastDialogDir({
       ...options,
       properties: ["openDirectory", "createDirectory"],
-    };
+    });
     const folderDialogPromise = await dialog.showOpenDialog(dialogOptions);
+    if (!folderDialogPromise.canceled) {
+      rememberDialogDir(folderDialogPromise.filePaths);
+    }
     return folderDialogPromise;
   });
 
