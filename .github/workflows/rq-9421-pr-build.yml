@@ -35,12 +35,16 @@ jobs:
 
       - name: Install (same script as the release workflow)
         shell: bash
+        env:
+          # npm runs dependency scripts silently by default. Print their headers so the
+          # next step can see one that ran. It runs nothing: ignore-scripts=true still applies.
+          npm_config_foreground_scripts: "true"
         run: bash ./install.sh 2>&1 | tee install.log
 
       - name: Only this repo's own install scripts ran
         shell: bash
         run: |
-          # npm prints "> <name>@<version> <script>" for every lifecycle script it runs.
+          # With foreground scripts, npm prints "> <name>@<version> <script>" for every lifecycle script it runs.
           grep -E '^> [^ ]+@[^ ]+ (preinstall|install|postinstall)$' install.log | tee ran.txt || true
           if grep -vE '^> requestly@' ran.txt; then echo "A third-party install script ran"; exit 1; fi
 
