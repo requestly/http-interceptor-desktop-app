@@ -1,0 +1,58 @@
+# TEMPORARY (RQ-9421, unit D): proves that install.sh, build and an unsigned package still work on
+# all three platforms after the legacy API client removal. The release workflow only runs on
+# master, so it can't test a pull request. Delete this file before merging.
+name: PR build check (temporary, RQ-9421)
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-2022, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: EOL autocrlf input
+        run: git config --global core.autocrlf input
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.12.0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: Install (same script as the release workflow)
+        shell: bash
+        env:
+          # npm runs dependency scripts silently by default. Print their headers so the
+          # next step can see one that ran. It runs nothing: ignore-scripts=true still applies.
+          npm_config_foreground_scripts: "true"
+        run: bash ./install.sh 2>&1 | tee install.log
+
+      - name: Only this repo's own install scripts ran
+        shell: bash
+        run: |
+          # With foreground scripts, npm prints "> <name>@<version> <script>" for every lifecycle script it runs.
+          grep -E '^> [^ ]+@[^ ]+ (preinstall|install|postinstall)$' install.log | tee ran.txt || true
+          if grep -vE '^> requestly@' ran.txt; then echo "A third-party install script ran"; exit 1; fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Package (unsigned, no publish)
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx --no-install electron-builder build --publish never --dir -c.mac.identity=null -c.mac.notarize=false
