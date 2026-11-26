@@ -10,7 +10,6 @@ import logNetworkRequest from "./actions/logNetworkRequest";
 import logNetworkRequestV2 from "./actions/logNetworkRequestV2";
 import getCurrentNetworkLogs from "./actions/getCurrentNetworkLogs";
 import * as PrimaryStorageService from "./actions/initPrimaryStorage";
-import makeApiClientRequest from "./actions/makeApiClientRequest";
 import storageService from "../lib/storage";
 import {
   deleteNetworkRecording,
@@ -18,7 +17,6 @@ import {
   getSessionRecording,
   storeSessionRecording,
 } from "./actions/networkSessionStorage";
-import { createOrUpdateAxiosInstance } from "./actions/getProxiedAxios";
 // todo: refactor main.ts to only export core entities like webappWindow
 // and then build these utilites elsewhere
 // eslint-disable-next-line import/no-cycle
@@ -179,7 +177,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
   // Open handle for async browser close
   ipcMain.handle("proxy-restarted", async (event, payload) => {
-    createOrUpdateAxiosInstance(payload);
     webAppWindow?.send("proxy-restarted", payload);
   });
 
@@ -219,7 +216,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
   ipcMain.on("proxy-config-updated", (_, payload) => {
     createTrayMenu(payload?.ip, payload?.port);
-    createOrUpdateAxiosInstance(payload);
   });
 
   ipcMain.handle("does-file-exist", async (event, filePath) => {
@@ -230,10 +226,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
       console.error("Error checking file existence", e);
       return false;
     }
-  });
-
-  ipcMain.handle("get-api-response", async (event, payload) => {
-    return makeApiClientRequest(payload);
   });
 
   /* HACKY: Forces regeneration by deleting old cert and closes app */

@@ -40,7 +40,6 @@ import { getReadyToQuitApp } from "./actions/cleanup";
 import fs from "fs";
 import logger from "../utils/logger";
 import { setupIPCForwardingToWebApp } from "./actions/setupIPCForwarding";
-import { saveCookies } from "./actions/cookiesHelpers";
 
 // Global error handlers for main process
 process.on("uncaughtException", (error) => {
@@ -358,7 +357,6 @@ const createWindow = async () => {
   });
 
   webAppWindow.on("closed", async () => {
-    saveCookies();
     await getReadyToQuitApp();
     webAppWindow = null;
     return;
