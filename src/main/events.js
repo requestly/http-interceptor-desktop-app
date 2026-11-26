@@ -10,7 +10,6 @@ import logNetworkRequest from "./actions/logNetworkRequest";
 import logNetworkRequestV2 from "./actions/logNetworkRequestV2";
 import getCurrentNetworkLogs from "./actions/getCurrentNetworkLogs";
 import * as PrimaryStorageService from "./actions/initPrimaryStorage";
-import makeApiClientRequest from "./actions/makeApiClientRequest";
 import storageService from "../lib/storage";
 import {
   deleteNetworkRecording,
@@ -18,27 +17,11 @@ import {
   getSessionRecording,
   storeSessionRecording,
 } from "./actions/networkSessionStorage";
-import { createOrUpdateAxiosInstance } from "./actions/getProxiedAxios";
 // todo: refactor main.ts to only export core entities like webappWindow
 // and then build these utilites elsewhere
 // eslint-disable-next-line import/no-cycle
 import createTrayMenu, { loadWebAppUrl, isAllowedWebAppUrl } from "./main";
-import {
-  fetchAndSaveSecrets,
-  getSecretProviderConfig,
-  getSecretValue,
-  getSecretValues,
-  initSecretsManager,
-  listSecretProviders,
-  listSecrets,
-  removeSecretProviderConfig,
-  removeSecretValue,
-  removeSecretValues,
-  setSecretProviderConfig,
-  subscribeToProvidersChange,
-  testSecretProviderConnection,
-  testSecretProviderConnectionWithConfig,
-} from "../lib/secretsManager";
+import { registerDeprecatedSecretsManagerHandlers } from "./actions/secretsManagerDeprecated";
 
 const getFileCategory = (fileExtension) => {
   switch (fileExtension) {
@@ -51,13 +34,6 @@ const getFileCategory = (fileExtension) => {
       return "unknown";
   }
 };
-
-const createFsResourceItem = (name, fsResourcePath, type) => ({
-  name,
-  path: fsResourcePath,
-  type,
-  ...(type === "directory" && { contents: [] }),
-});
 
 export async function trackRecentlyAccessedFile(filePath) {
   const fileExtension = path.extname(filePath);
@@ -179,7 +155,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
   // Open handle for async browser close
   ipcMain.handle("proxy-restarted", async (event, payload) => {
-    createOrUpdateAxiosInstance(payload);
     webAppWindow?.send("proxy-restarted", payload);
   });
 
@@ -219,21 +194,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
 
   ipcMain.on("proxy-config-updated", (_, payload) => {
     createTrayMenu(payload?.ip, payload?.port);
-    createOrUpdateAxiosInstance(payload);
-  });
-
-  ipcMain.handle("does-file-exist", async (event, filePath) => {
-    try {
-      const exists = fs.existsSync(filePath);
-      return exists;
-    } catch (e) {
-      console.error("Error checking file existence", e);
-      return false;
-    }
-  });
-
-  ipcMain.handle("get-api-response", async (event, payload) => {
-    return makeApiClientRequest(payload);
   });
 
   /* HACKY: Forces regeneration by deleting old cert and closes app */
@@ -342,87 +302,8 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
     webAppWindow?.send("helper-server-hit");
   });
 
-  ipcMain.handle("secretsManager:init", (event, { userId }) => {
-    return initSecretsManager(userId);
-  });
-
-  ipcMain.handle("secretsManager:subscribeToProvidersChange", () => {
-    subscribeToProvidersChange((providers) => {
-      webAppWindow?.webContents.send(
-        "secretsManager:providersChanged",
-        providers
-      );
-    });
-  });
-
-  ipcMain.handle(
-    "secretsManager:setSecretProviderConfig",
-    (event, { config }) => {
-      return setSecretProviderConfig(config);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:getSecretProviderConfig",
-    (event, { providerId }) => {
-      return getSecretProviderConfig(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:removeSecretProviderConfig",
-    (event, { providerId }) => {
-      return removeSecretProviderConfig(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:testProviderConnection",
-    (event, { providerId }) => {
-      return testSecretProviderConnection(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:testProviderConnectionWithConfig",
-    (event, { config }) => {
-      return testSecretProviderConnectionWithConfig(config);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:getSecretValue",
-    (event, { providerId, secretReference }) => {
-      return getSecretValue(providerId, secretReference);
-    }
-  );
-
-  ipcMain.handle("secretsManager:getSecretValues", (event, { secrets }) => {
-    return getSecretValues(secrets);
-  });
-
-  ipcMain.handle("secretsManager:fetchAndSaveSecrets", (event, { providerId, secretRefs }) => {
-    return fetchAndSaveSecrets(providerId, secretRefs);
-  });
-
-  ipcMain.handle("secretsManager:listSecretProviders", () => {
-    return listSecretProviders();
-  });
-
-  ipcMain.handle(
-    "secretsManager:removeSecretValue",
-    (event, { providerId, secretReference }) => {
-      return removeSecretValue(providerId, secretReference);
-    }
-  );
-
-  ipcMain.handle("secretsManager:removeSecretValues", (event, { secrets }) => {
-    return removeSecretValues(secrets);
-  });
-
-  ipcMain.handle("secretsManager:listSecrets", (event, { providerId }) => {
-    return listSecrets(providerId);
-  });
+  // Deprecated with the in-app API client: inert handlers, nothing stored or fetched.
+  registerDeprecatedSecretsManagerHandlers();
 };
 
 export const registerMainProcessCommonEvents = () => {
@@ -464,95 +345,4 @@ export const registerMainProcessCommonEvents = () => {
     shell.openPath(resourcePath);
   });
 
-  ipcMain.handle(
-    "get-workspace-folder-preview",
-    async (event, payload = {}) => {
-      try {
-        let { folderPath } = payload;
-
-        if (!folderPath) {
-          const homeDir = os.homedir();
-          const documentsPath = path.join(homeDir, "Documents");
-
-          if (
-            fs.existsSync(documentsPath) &&
-            fs.statSync(documentsPath).isDirectory()
-          ) {
-            folderPath = documentsPath;
-          } else {
-            folderPath = homeDir;
-          }
-        }
-
-        // Checking if workspace folder exists
-        const folderExists = fs.existsSync(folderPath);
-        const existingContents = [];
-
-        if (folderExists) {
-          // Check if it's a directory
-          const stats = fs.statSync(folderPath);
-          if (!stats.isDirectory()) {
-            throw new Error("Folder path is not a directory");
-          }
-
-          // Read existing directory contents at root level of workspace
-          const items = fs.readdirSync(folderPath);
-
-          for (const item of items) {
-            const itemPath = path.join(folderPath, item);
-            const itemStats = fs.statSync(itemPath);
-
-            existingContents.push(
-              createFsResourceItem(
-                item,
-                itemPath,
-                itemStats.isDirectory() ? "directory" : "file"
-              )
-            );
-          }
-
-          existingContents.sort((a, b) => {
-            const aIsDir = a.type === "directory";
-            const bIsDir = b.type === "directory";
-            if (aIsDir && !bIsDir) return -1;
-            if (!aIsDir && bIsDir) return 1;
-            return a.name.localeCompare(b.name);
-          });
-        }
-
-        const newAdditions = {
-          name: "Workspace folder",
-          path: folderPath,
-          type: "directory",
-          contents: [
-            {
-              name: "environments",
-              path: path.join(folderPath, "environments"),
-              type: "directory",
-              contents: [],
-            },
-            {
-              name: "requestly.json",
-              path: path.join(folderPath, "requestly.json"),
-              type: "file",
-            },
-          ],
-        };
-
-        return {
-          success: true,
-          folderPath,
-          existingContents,
-          newAdditions,
-        };
-      } catch (error) {
-        console.error("Error getting folder preview:", error);
-        return {
-          success: false,
-          error: error.message,
-          folderPath: payload.folderPath,
-        };
-      }
-    }
-  );
 };

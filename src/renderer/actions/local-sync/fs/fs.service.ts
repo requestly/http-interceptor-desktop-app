@@ -10,8 +10,6 @@ import fs, {
 } from "node:fs";
 import fsp, { FileHandle } from "node:fs/promises";
 import { Stream } from "node:stream";
-import { AccessFallback } from "./access-fallback.decorator";
-import { SudoCommandExecutor } from "./sudoCommandExecutor";
 
 export class FsService {
   static readFileSync(
@@ -36,7 +34,6 @@ export class FsService {
     return fsp.readFile(path, options);
   }
 
-  @AccessFallback(SudoCommandExecutor.readFile)
   static readFileWithElevatedAccess(
     ...params: Parameters<typeof FsService.readFile>
   ) {
@@ -92,7 +89,6 @@ export class FsService {
     return fsp.writeFile(file, data, options);
   }
 
-  @AccessFallback(SudoCommandExecutor.writeFile)
   static writeFileWithElevatedAccess(
     ...params: Parameters<typeof FsService.writeFile>
   ) {
@@ -114,7 +110,6 @@ export class FsService {
     return fsp.mkdir(...params);
   }
 
-  @AccessFallback(SudoCommandExecutor.mkdir)
   static mkdirWithElevatedAccess(...params: Parameters<typeof fsp.mkdir>) {
     return FsService.mkdir(...params);
   }
