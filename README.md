@@ -66,10 +66,11 @@ git clone https://github.com/requestly/requestly-proxy.git
 npm i
 ```
 
-4. Go to the requestly-desktop-app folder & Install packages with npm
+4. Go to the requestly-desktop-app folder & install packages with the install script
 ```
-npm i
+./install.sh
 ```
+> `.npmrc` sets `ignore-scripts=true`, so npm runs no package's install scripts. `install.sh` runs the ones this repo needs (rebuilding native modules for Electron, linking `src/node_modules`). A bare `npm i` leaves them out.
 
 ### Run
 
