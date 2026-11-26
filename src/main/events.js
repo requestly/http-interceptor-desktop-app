@@ -21,22 +21,7 @@ import {
 // and then build these utilites elsewhere
 // eslint-disable-next-line import/no-cycle
 import createTrayMenu, { loadWebAppUrl, isAllowedWebAppUrl } from "./main";
-import {
-  fetchAndSaveSecrets,
-  getSecretProviderConfig,
-  getSecretValue,
-  getSecretValues,
-  initSecretsManager,
-  listSecretProviders,
-  listSecrets,
-  removeSecretProviderConfig,
-  removeSecretValue,
-  removeSecretValues,
-  setSecretProviderConfig,
-  subscribeToProvidersChange,
-  testSecretProviderConnection,
-  testSecretProviderConnectionWithConfig,
-} from "../lib/secretsManager";
+import { registerDeprecatedSecretsManagerHandlers } from "./actions/secretsManagerDeprecated";
 
 const getFileCategory = (fileExtension) => {
   switch (fileExtension) {
@@ -334,87 +319,8 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
     webAppWindow?.send("helper-server-hit");
   });
 
-  ipcMain.handle("secretsManager:init", (event, { userId }) => {
-    return initSecretsManager(userId);
-  });
-
-  ipcMain.handle("secretsManager:subscribeToProvidersChange", () => {
-    subscribeToProvidersChange((providers) => {
-      webAppWindow?.webContents.send(
-        "secretsManager:providersChanged",
-        providers
-      );
-    });
-  });
-
-  ipcMain.handle(
-    "secretsManager:setSecretProviderConfig",
-    (event, { config }) => {
-      return setSecretProviderConfig(config);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:getSecretProviderConfig",
-    (event, { providerId }) => {
-      return getSecretProviderConfig(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:removeSecretProviderConfig",
-    (event, { providerId }) => {
-      return removeSecretProviderConfig(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:testProviderConnection",
-    (event, { providerId }) => {
-      return testSecretProviderConnection(providerId);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:testProviderConnectionWithConfig",
-    (event, { config }) => {
-      return testSecretProviderConnectionWithConfig(config);
-    }
-  );
-
-  ipcMain.handle(
-    "secretsManager:getSecretValue",
-    (event, { providerId, secretReference }) => {
-      return getSecretValue(providerId, secretReference);
-    }
-  );
-
-  ipcMain.handle("secretsManager:getSecretValues", (event, { secrets }) => {
-    return getSecretValues(secrets);
-  });
-
-  ipcMain.handle("secretsManager:fetchAndSaveSecrets", (event, { providerId, secretRefs }) => {
-    return fetchAndSaveSecrets(providerId, secretRefs);
-  });
-
-  ipcMain.handle("secretsManager:listSecretProviders", () => {
-    return listSecretProviders();
-  });
-
-  ipcMain.handle(
-    "secretsManager:removeSecretValue",
-    (event, { providerId, secretReference }) => {
-      return removeSecretValue(providerId, secretReference);
-    }
-  );
-
-  ipcMain.handle("secretsManager:removeSecretValues", (event, { secrets }) => {
-    return removeSecretValues(secrets);
-  });
-
-  ipcMain.handle("secretsManager:listSecrets", (event, { providerId }) => {
-    return listSecrets(providerId);
-  });
+  // Deprecated with the in-app API client: inert handlers, nothing stored or fetched.
+  registerDeprecatedSecretsManagerHandlers();
 };
 
 export const registerMainProcessCommonEvents = () => {
