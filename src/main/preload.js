@@ -4,7 +4,7 @@ require("core-js/stable");
 require("regenerator-runtime/runtime");
 // Core
 const { contextBridge } = require("electron");
-const { app } = require("@electron/remote");
+const { app, dialog } = require("@electron/remote");
 
 const DesktopStorageService = require("./preload-apis/DesktopStorageService");
 // Sub
@@ -18,6 +18,40 @@ if (process.env.NODE_ENV === "development") {
   appVersion = require("../../package.json").version;
 } else {
   appVersion = app.getVersion();
+}
+
+// Work around Electron Windows bug where built-in alert/confirm cause
+// input fields (including CodeMirror editors) to lose a visible caret and
+// stop accepting text until the window is re-focused.
+//
+// See: https://github.com/electron/electron/issues/20400
+// Instead of the browser's native confirm, delegate to Electron's
+// dialog.showMessageBoxSync, which does not trigger the problematic
+// focus behavior.
+try {
+  if (process.platform === "win32" && typeof window !== "undefined") {
+    // Preserve any existing implementation in case something depends on it
+    const originalConfirm = window.confirm;
+
+    window.confirm = function (message) {
+      try {
+        const buttonIdx = dialog.showMessageBoxSync(null, {
+          type: "question",
+          buttons: ["OK", "Cancel"],
+          defaultId: 0,
+          cancelId: 1,
+          detail: String(message ?? ""),
+          message: "",
+        });
+        return buttonIdx === 0;
+      } catch (e) {
+        // Fallback to original confirm if dialog fails for any reason
+        return originalConfirm ? originalConfirm(message) : true;
+      }
+    };
+  }
+} catch (e) {
+  // Best-effort override only; ignore any preload-time errors.
 }
 
 (function (window) {
