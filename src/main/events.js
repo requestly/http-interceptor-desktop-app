@@ -35,13 +35,6 @@ const getFileCategory = (fileExtension) => {
   }
 };
 
-const createFsResourceItem = (name, fsResourcePath, type) => ({
-  name,
-  path: fsResourcePath,
-  type,
-  ...(type === "directory" && { contents: [] }),
-});
-
 export async function trackRecentlyAccessedFile(filePath) {
   const fileExtension = path.extname(filePath);
 
@@ -203,16 +196,6 @@ export const registerMainProcessEventsForWebAppWindow = (webAppWindow) => {
     createTrayMenu(payload?.ip, payload?.port);
   });
 
-  ipcMain.handle("does-file-exist", async (event, filePath) => {
-    try {
-      const exists = fs.existsSync(filePath);
-      return exists;
-    } catch (e) {
-      console.error("Error checking file existence", e);
-      return false;
-    }
-  });
-
   /* HACKY: Forces regeneration by deleting old cert and closes app */
   ipcMain.handle("renew-ssl-certificates", async () => {
     const pathToCurrentCA = path.resolve(
@@ -362,95 +345,4 @@ export const registerMainProcessCommonEvents = () => {
     shell.openPath(resourcePath);
   });
 
-  ipcMain.handle(
-    "get-workspace-folder-preview",
-    async (event, payload = {}) => {
-      try {
-        let { folderPath } = payload;
-
-        if (!folderPath) {
-          const homeDir = os.homedir();
-          const documentsPath = path.join(homeDir, "Documents");
-
-          if (
-            fs.existsSync(documentsPath) &&
-            fs.statSync(documentsPath).isDirectory()
-          ) {
-            folderPath = documentsPath;
-          } else {
-            folderPath = homeDir;
-          }
-        }
-
-        // Checking if workspace folder exists
-        const folderExists = fs.existsSync(folderPath);
-        const existingContents = [];
-
-        if (folderExists) {
-          // Check if it's a directory
-          const stats = fs.statSync(folderPath);
-          if (!stats.isDirectory()) {
-            throw new Error("Folder path is not a directory");
-          }
-
-          // Read existing directory contents at root level of workspace
-          const items = fs.readdirSync(folderPath);
-
-          for (const item of items) {
-            const itemPath = path.join(folderPath, item);
-            const itemStats = fs.statSync(itemPath);
-
-            existingContents.push(
-              createFsResourceItem(
-                item,
-                itemPath,
-                itemStats.isDirectory() ? "directory" : "file"
-              )
-            );
-          }
-
-          existingContents.sort((a, b) => {
-            const aIsDir = a.type === "directory";
-            const bIsDir = b.type === "directory";
-            if (aIsDir && !bIsDir) return -1;
-            if (!aIsDir && bIsDir) return 1;
-            return a.name.localeCompare(b.name);
-          });
-        }
-
-        const newAdditions = {
-          name: "Workspace folder",
-          path: folderPath,
-          type: "directory",
-          contents: [
-            {
-              name: "environments",
-              path: path.join(folderPath, "environments"),
-              type: "directory",
-              contents: [],
-            },
-            {
-              name: "requestly.json",
-              path: path.join(folderPath, "requestly.json"),
-              type: "file",
-            },
-          ],
-        };
-
-        return {
-          success: true,
-          folderPath,
-          existingContents,
-          newAdditions,
-        };
-      } catch (error) {
-        console.error("Error getting folder preview:", error);
-        return {
-          success: false,
-          error: error.message,
-          folderPath: payload.folderPath,
-        };
-      }
-    }
-  );
 };

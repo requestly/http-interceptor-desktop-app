@@ -282,7 +282,6 @@
     "@sentry/browser": "^8.34.0",
     "@sentry/electron": "^5.6.0",
     "@sinclair/typebox": "^0.34.25",
-    "@vscode/sudo-prompt": "^9.3.1",
     "address": "^2.0.3",
     "assert": "^2.0.0",
     "async": "^3.2.1",
