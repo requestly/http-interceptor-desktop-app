@@ -18,6 +18,11 @@ jobs:
       matrix:
         os: [macos-latest, windows-2022, ubuntu-latest]
         side: [base, head]
+        include:
+          # A second, independent build of master on Windows: separates files that change on every
+          # build (native compiles) from files this PR changes.
+          - os: windows-2022
+            side: base2
     runs-on: ${{ matrix.os }}
     steps:
       - name: EOL autocrlf input
@@ -26,7 +31,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-          ref: ${{ matrix.side == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+          ref: ${{ matrix.side == 'head' && github.event.pull_request.head.sha || github.event.pull_request.base.sha }}
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -72,7 +77,10 @@ jobs:
           const walk = (dir, rel, prefix) => {
             for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
               const p = path.join(dir, e.name), r = rel ? `${rel}/${e.name}` : e.name;
-              if (e.isDirectory()) walk(p, r, prefix);
+              if (e.isSymbolicLink()) {
+                // Record where the link points, without following it.
+                lines.push(`${sha(Buffer.from("symlink:" + fs.readlinkSync(p)))}  ${prefix}/${r}`);
+              } else if (e.isDirectory()) walk(p, r, prefix);
               else if (e.isFile() && e.name === "app.asar" && prefix === "app") {
                 const x = fs.mkdtempSync(path.join(os.tmpdir(), "asar-"));
                 asar.extractAll(p, x);
@@ -108,11 +116,13 @@ jobs:
           python3 - <<'PY'
           def load(f):
               return {l[66:]: l[:64] for l in open(f, encoding="utf-8").read().splitlines() if l}
-          for os_ in ["macos-latest", "windows-2022", "ubuntu-latest"]:
-              b, h = load(f"manifest-{os_}-base.txt"), load(f"manifest-{os_}-head.txt")
+          def compare(title, b, h, left="master", right="PR"):
               changed = sorted(p for p in b.keys() & h.keys() if b[p] != h[p])
-              print(f"== {os_}: {len(b)} files on master, {len(h)} on this PR, {len(changed)} changed")
-              for p in sorted(b.keys() - h.keys()): print(f"   only on master: {p}")
-              for p in sorted(h.keys() - b.keys()): print(f"   only on PR: {p}")
+              print(f"== {title}: {len(b)} files on {left}, {len(h)} on {right}, {len(changed)} changed")
+              for p in sorted(b.keys() - h.keys()): print(f"   only on {left}: {p}")
+              for p in sorted(h.keys() - b.keys()): print(f"   only on {right}: {p}")
               for p in changed: print(f"   changed: {p}")
+          for os_ in ["macos-latest", "windows-2022", "ubuntu-latest"]:
+              compare(os_, load(f"manifest-{os_}-base.txt"), load(f"manifest-{os_}-head.txt"))
+          compare("windows-2022, master built twice", load("manifest-windows-2022-base.txt"), load("manifest-windows-2022-base2.txt"), "master build 1", "master build 2")
           PY
