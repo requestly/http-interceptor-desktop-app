@@ -131,6 +131,9 @@ export default merge(baseConfig, {
     minimizer: [
       new TerserPlugin({
         parallel: true,
+        // Newer terser-webpack-plugin versions derive ES2020 from the Electron target; 5.3.x used ES2015.
+        // Pin ES2015 so the update doesn't re-minify all shipped code (RQ-9421 B1).
+        terserOptions: { ecma: 2015, compress: { ecma: 2015 } },
       }),
       new CssMinimizerPlugin(),
     ],
