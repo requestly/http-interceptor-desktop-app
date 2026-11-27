@@ -1,7 +1,7 @@
 {
   "productName": "Requestly",
   "appId": "io.requestly.beta-setapp",
-  "electronVersion": "42.4.1",
+  "electronVersion": "43.8.4",
   "asar": true,
   "asarUnpack": "**\\*.{node,dll}",
   "files": [
