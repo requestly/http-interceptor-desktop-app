@@ -20,11 +20,35 @@ export const getReadyToQuitApp = async  () => {
     cleanup();
   
     if (global.backgroundWindow) {
+      global.allowBackgroundWindowDestruction = true;
+
+      let timeoutHandle;
+
       ipcMain.once("shutdown-success", () => {
-        console.log("shudown sucess");
-        global.backgroundWindow?.close();
-        resolve()
+        clearTimeout(timeoutHandle);
+        if (
+          global.backgroundWindow &&
+          !global.backgroundWindow.isDestroyed()
+        ) {
+          if (global.backgroundWindow._originalDestroy) {
+            global.backgroundWindow._originalDestroy();
+          } else {
+            global.backgroundWindow.destroy();
+          }
+        }
+        resolve();
       });
+      
+      timeoutHandle = setTimeout(() => {
+        if (global.backgroundWindow && !global.backgroundWindow.isDestroyed()) {
+          if (global.backgroundWindow._originalDestroy) {
+            global.backgroundWindow._originalDestroy();
+          } else {
+            global.backgroundWindow.destroy();
+          }
+        }
+        resolve();
+      }, 2000);
     } else {
       resolve();
     }
