@@ -51,6 +51,24 @@ class UserPreferenceActionProcessor extends BaseActionProcessor {
         this.store.set({ allowInsecureCerts: value })
         break;
       }
+      case USER_PREFERENCE.GET_DEV_SCRIPT_MODE:
+        return !!this.store.get("devScriptMode")
+      case USER_PREFERENCE.UPDATE_DEV_SCRIPT_MODE: {
+        // RQ-2426: fail SAFE. Dev mode (full host access for code rules) is enabled
+        // only for an explicit boolean `true`, or a recognized truthy boolean-string
+        // (IPC may serialize booleans). A missing key, object, or unknown value stays
+        // `false` (safe QuickJS sandbox).
+        // @ts-ignore
+        const raw = payload?.data?.devScriptMode;
+        let value = false;
+        if (typeof raw === "boolean") {
+          value = raw;
+        } else if (typeof raw === "string") {
+          value = raw === "true" || raw === "1";
+        }
+        this.store.set({ devScriptMode: value })
+        break;
+      }
       case USER_PREFERENCE.GET_COMPLETE_LOGGING_CONFIG:
         return this.store.get("localFileLogConfig")
 

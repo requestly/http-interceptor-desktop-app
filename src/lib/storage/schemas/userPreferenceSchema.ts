@@ -13,6 +13,14 @@ export const userPreferenceSchema = {
     default: false
   },
 
+  // RQ-2426: when true, "code" rules run via the legacy full-access executor
+  // (DEV mode) instead of the safe QuickJS sandbox. Full system access — off
+  // (safe) by default.
+  devScriptMode: {
+    type: "boolean",
+    default: false
+  },
+
   localFileLogConfig: {
     type: "object",
     properties: {

@@ -46,8 +46,14 @@ class StorageCacheService {
             rqProxy.setAllowInsecureCerts(!!newUserPreferences?.allowInsecureCerts);
             appliedLive = true;
           }
+          // RQ-2426: apply the DEV script-mode toggle live on the running proxy too.
+          // Only an explicit `true` enables it (full host access); anything else is
+          // the safe sandbox.
+          if (rqProxy?.setDevScriptMode) {
+            rqProxy.setDevScriptMode(newUserPreferences?.devScriptMode === true);
+          }
         } catch (e) {
-          console.log("Failed to apply allowInsecureCerts live", e);
+          console.log("Failed to apply allowInsecureCerts/devScriptMode live", e);
         }
 
         // Restart the proxy only when the port actually changed (or as a fallback
