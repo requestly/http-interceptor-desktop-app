@@ -1,5 +1,5 @@
 # TEMPORARY (RQ-9421, unit B2): proves that install.sh, build and an unsigned package still work on
-# all three platforms after the build-tool updates, and that the packaged app is byte-identical to
+# all three platforms after the dependency updates, and that the packaged app is byte-identical to
 # master's except where expected. The release workflow only runs on master, so it can't test a pull
 # request. Delete this file before merging.
 name: PR build check (temporary, RQ-9421)
