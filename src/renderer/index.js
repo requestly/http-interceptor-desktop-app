@@ -1,6 +1,7 @@
 // Initialize Sentry for background renderer (must be first)
 import "../utils/sentryInit";
 import logger from "../utils/logger";
+import { ipcRenderer } from "electron";
 
 const initGlobalNamespace = () => {
   global.rq = global.rq || {};
@@ -54,3 +55,6 @@ clearStoredLogs();
 
 // eslint-disable-next-line no-unused-vars, no-new
 new FsManagerBuilderRPCService();
+
+// Signal to main process that background is fully initialized and ready to receive IPC calls
+ipcRenderer.send("background-process-ready");

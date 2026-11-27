@@ -20,7 +20,6 @@ export class RPCServiceOverIPC {
   }
 
   generateChannelNameForMethod(method: Function) {
-    console.log("DBG-1: method name", method.name);
     return `${this.RPC_CHANNEL_PREFIX}${method.name}`;
   }
 
@@ -29,39 +28,31 @@ export class RPCServiceOverIPC {
     method: (..._args: any[]) => Promise<any>
   ) {
     const channelName = `${this.RPC_CHANNEL_PREFIX}${exposedMethodName}`;
-    // console.log("DBG-1: exposing channel", channelName, Date.now());
-    ipcRenderer.on(channelName, async (_event, args) => {
-      // console.log(
-      //   "DBG-1: received event on channel",
-      //   channelName,
-      //   _event,
-      //   args,
-      //   Date.now()
-      // );
-      try {
-        const result = await method(...args);
+    ipcRenderer.on(channelName, async (_event, incomingData) => {
+      // Detect new envelope format { payload, replyChannel } vs old direct payload format
+      const hasNewFormat =
+        incomingData != null &&
+        typeof incomingData === "object" &&
+        !Array.isArray(incomingData) &&
+        "replyChannel" in incomingData;
 
-        // console.log(
-        //   "DBG-2: result in method",
-        //   result,
-        //   channelName,
-        //   _event,
-        //   args,
-        //   exposedMethodName,
-        //   Date.now()
-        // );
-        ipcRenderer.send(`reply-${channelName}`, {
+      const actualArgs = hasNewFormat ? incomingData.payload : incomingData;
+      const actualReplyChannel = hasNewFormat
+        ? incomingData.replyChannel
+        : `reply-${channelName}`;
+
+      try {
+        const result = await method(
+          ...(Array.isArray(actualArgs) ? actualArgs : [actualArgs])
+        );
+
+        ipcRenderer.send(actualReplyChannel, {
           success: true,
           data: result,
         });
       } catch (error: any) {
-        // console.log(
-        //   `DBG-2: reply-${channelName} error in method`,
-        //   error,
-        //   Date.now()
-        // );
         captureException(error);
-        ipcRenderer.send(`reply-${channelName}`, {
+        ipcRenderer.send(actualReplyChannel, {
           success: false,
           data: error.message,
         });
