@@ -359,5 +359,13 @@
     "hooks": {
       "pre-commit": "lint-staged"
     }
+  },
+  "overrides": {
+    "@appium/logger": {
+      "lodash": "$lodash"
+    },
+    "httpsnippet": {
+      "form-data": "4.0.6"
+    }
   }
 }
