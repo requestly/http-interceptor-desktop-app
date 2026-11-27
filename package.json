@@ -303,7 +303,6 @@
     "headless": "^1.2.0",
     "history": "5.x.x",
     "https-browserify": "^1.0.0",
-    "httpsnippet": "^2.0.0",
     "ignore": "^7.0.5",
     "lodash": "^4.17.21",
     "mime-types": "^2.1.34",
@@ -359,6 +358,14 @@
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
+    }
+  },
+  "overrides": {
+    "@appium/logger": {
+      "lodash": "$lodash"
+    },
+    "httpsnippet": {
+      "form-data": "4.0.6"
     }
   }
 }
