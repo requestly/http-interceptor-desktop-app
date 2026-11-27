@@ -82,6 +82,9 @@ jobs:
                 lines.push(`${sha(Buffer.from("symlink:" + fs.readlinkSync(p)))}  ${prefix}/${r}`);
               } else if (e.isDirectory()) walk(p, r, prefix);
               else if (e.isFile() && e.name === "app.asar" && prefix === "app") {
+                // The archive's own bytes (header metadata such as executable flags included),
+                // then each extracted entry for diagnosis.
+                lines.push(`${sha(fs.readFileSync(p))}  ${prefix}/${r}`);
                 const x = fs.mkdtempSync(path.join(os.tmpdir(), "asar-"));
                 asar.extractAll(p, x);
                 walk(x, "", "asar");
