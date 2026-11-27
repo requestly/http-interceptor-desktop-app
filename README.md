@@ -1,9 +1,9 @@
 <p align="center">
   <a rel="noreferrer noopener" href="https://requestly.io/">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/requestly/requestly-desktop-app/assets/16779465/84f8c853-81df-4ffc-94cb-40f0b1d122d6">
-      <source media="(prefers-color-scheme: light)" srcset="https://github.com/requestly/requestly-desktop-app/assets/16779465/ebadc791-4eb6-4faa-920a-a322aa4b892b">
-        <img alt="Requestly Logo" src="https://github.com/requestly/requestly-desktop-app/assets/16779465/84f8c853-81df-4ffc-94cb-40f0b1d122d6" width="40%">
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/requestly/http-interceptor-desktop-app/assets/16779465/84f8c853-81df-4ffc-94cb-40f0b1d122d6">
+      <source media="(prefers-color-scheme: light)" srcset="https://github.com/requestly/http-interceptor-desktop-app/assets/16779465/ebadc791-4eb6-4faa-920a-a322aa4b892b">
+        <img alt="Requestly Logo" src="https://github.com/requestly/http-interceptor-desktop-app/assets/16779465/84f8c853-81df-4ffc-94cb-40f0b1d122d6" width="40%">
       </picture>
   </a>
 </p>
@@ -52,7 +52,7 @@ Npm (Version: 10.8.2)
 1. Clone the repo
 
 ```
-git clone https://github.com/requestly/requestly-desktop-app.git
+git clone https://github.com/requestly/http-interceptor-desktop-app.git
 ```
 
 2. Clone requestly-proxy. (Should be cloned in the same folder for development)
