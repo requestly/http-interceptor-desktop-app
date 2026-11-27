@@ -40,7 +40,6 @@ import { getReadyToQuitApp } from "./actions/cleanup";
 import fs from "fs";
 import logger from "../utils/logger";
 import { setupIPCForwardingToWebApp } from "./actions/setupIPCForwarding";
-import { saveCookies } from "./actions/cookiesHelpers";
 
 // Global error handlers for main process
 process.on("uncaughtException", (error) => {
@@ -287,13 +286,15 @@ const createWindow = async () => {
       nodeIntegration: false,
       sandbox: false,
       preload: path.join(__dirname, "preload.js"),
+      // The preload reads the app version from this argument; the web app window
+      // does not get @electron/remote.
+      additionalArguments: [`--rq-app-version=${app.getVersion()}`],
     },
     ...framelessOptions,
   });
   webAppWindow.webContents.setVisualZoomLevelLimits(1, 3);
 
   new AutoUpdate(webAppWindow);
-  remote.enable(webAppWindow.webContents);
 
   // TODO @sahil: Prod and Local Urls should be supplied by @requestly/requestly-core-npm package.
   const DESKTOP_APP_URL = getWebAppURL();
@@ -358,7 +359,6 @@ const createWindow = async () => {
   });
 
   webAppWindow.on("closed", async () => {
-    saveCookies();
     await getReadyToQuitApp();
     webAppWindow = null;
     return;

@@ -4,7 +4,6 @@ require("core-js/stable");
 require("regenerator-runtime/runtime");
 // Core
 const { contextBridge } = require("electron");
-const { app } = require("@electron/remote");
 
 const DesktopStorageService = require("./preload-apis/DesktopStorageService");
 // Sub
@@ -17,7 +16,9 @@ const isSetappBuild = process.env.IS_SETAPP_BUILD === "true";
 if (process.env.NODE_ENV === "development") {
   appVersion = require("../../package.json").version;
 } else {
-  appVersion = app.getVersion();
+  // Passed by the main process (webPreferences.additionalArguments).
+  const versionArg = process.argv.find((arg) => arg.startsWith("--rq-app-version="));
+  appVersion = versionArg ? versionArg.slice("--rq-app-version=".length) : null;
 }
 
 (function (window) {

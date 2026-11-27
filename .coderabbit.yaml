@@ -1,0 +1,9 @@
+# Repo-level CodeRabbit config. Inherits the organisation defaults (requestly/coderabbit) and
+# only turns on approvals (RQ-9390 security flow, 2026-11-16).
+inheritance: true
+reviews:
+  # CodeRabbit requests changes while one of its findings is open and approves once none are.
+  # A PR's branch takes this setting once it contains this line.
+  request_changes_workflow: true
+  # An author must not approve their own PR through `@coderabbitai approve`.
+  allow_author_approval: false
