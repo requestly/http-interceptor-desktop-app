@@ -297,7 +297,7 @@
     "electron-log": "^4.4.1",
     "electron-squirrel-startup": "^1.0.0",
     "electron-store": "^8.0.1",
-    "electron-updater": "^6.3.2",
+    "electron-updater": "^6.8.11",
     "es6-promisify": "^7.0.0",
     "fs-extra": "^10.0.0",
     "headless": "^1.2.0",
