@@ -11,6 +11,7 @@ import logNetworkRequestV2 from "./actions/logNetworkRequestV2";
 import getCurrentNetworkLogs from "./actions/getCurrentNetworkLogs";
 import * as PrimaryStorageService from "./actions/initPrimaryStorage";
 import storageService from "../lib/storage";
+import { isStorageActionAllowedFromRenderer } from "./storage-action-gate";
 import {
   deleteNetworkRecording,
   getAllNetworkSessions,
@@ -120,6 +121,16 @@ export const registerMainProcessEvents = () => {
   ipcMain.handle("clear-storage", PrimaryStorageService.clearStorage);
 
   ipcMain.handle("rq-storage:storage-action", (event, storageAction) => {
+    // RQ-3110: forwarding this verbatim made the get-file-contents allowlist
+    // renderer-writable. See storage-action-gate.ts.
+    if (!isStorageActionAllowedFromRenderer(storageAction)) {
+      console.warn(
+        "Refused storage action from renderer:",
+        storageAction?.type,
+        "- this action can only originate in the main process."
+      );
+      return null;
+    }
     return storageService.processAction(storageAction);
   });
 };
